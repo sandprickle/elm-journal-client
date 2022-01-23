@@ -5,6 +5,8 @@ import Html exposing (Html, button, div, h3, input, p, text, textarea)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
+import Json.Decode exposing (Decoder, at, field, map3, string)
+import Time
 
 
 baseUrl : String
@@ -48,6 +50,7 @@ type alias Model =
     , content : String
     , message : String
     , status : Status
+    , journalEntries : List JournalEntry
     }
 
 
@@ -57,6 +60,7 @@ init _ =
       , content = ""
       , message = ""
       , status = Success
+      , journalEntries = []
       }
     , Cmd.none
     )
@@ -70,8 +74,10 @@ type Msg
     = Content String
     | JournalId String
     | SubmitEntry
-    | SentEntry (Result Http.Error String)
-    | GetEntries
+    | SentRequest (Result Http.Error String)
+    | GetJournalEntries
+    | GotJournalEntries (Result Http.Error String)
+    | UpdateMessage String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -87,13 +93,10 @@ update msg model =
             , Cmd.none
             )
 
-        SentEntry result ->
-            ( model, Cmd.none )
+        UpdateMessage newMessage ->
+            ( { model | message = newMessage }, Cmd.none )
 
-        SubmitEntry ->
-            ( model, Cmd.none )
-
-        GetEntries ->
+        _ ->
             ( model, Cmd.none )
 
 
@@ -138,3 +141,31 @@ view model =
             ]
         , p [ class "message" ] [ text model.message ]
         ]
+
+
+
+-- HELPERS
+
+
+timestamp : Time.Posix -> String
+timestamp posix =
+    String.fromInt (Time.posixToMillis posix)
+
+
+getJournalEntries : String -> Cmd Msg
+getJournalEntries journalId =
+    Http.get
+        { url = baseUrl ++ "/entries?journal=" ++ journalId
+        , expect = Http.expectJson GotJournalEntries journalEntryListDecoder
+        }
+
+
+journalEntryDecoder : Decoder JournalEntry
+journalEntryDecoder =
+    map3 JournalEntry
+        (at [ "journalId" ] string)
+        (at [ "timestamp" ] string)
+        (at [ "content" ] string)
+
+
+journalEntryListDecoder : Decoder
