@@ -5,13 +5,14 @@ import Html exposing (Html, button, div, h3, input, p, text, textarea)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
-import Json.Decode exposing (Decoder, at, field, map3, string)
-import Time
+import Json.Encode as Encode exposing (encode, int, string)
+import Task
+import Time exposing (millisToPosix, posixToMillis)
 
 
 baseUrl : String
 baseUrl =
-    "https://phmnhghlz9.execute-api.us-east-1.amazonaws.com"
+    "https://fv5c7jlkul.execute-api.us-east-1.amazonaws.com"
 
 
 
@@ -36,31 +37,28 @@ type Status
     = Failure
     | Loading
     | Success
+    | None
 
 
 type alias JournalEntry =
-    { content : String
-    , timestamp : String
-    , journalId : String
+    { journalId : String
+    , timestamp : Int
+    , content : String
     }
 
 
 type alias Model =
-    { journalId : String
-    , content : String
-    , message : String
+    { currentJournalId : String
+    , currentContent : String
     , status : Status
-    , journalEntries : List JournalEntry
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { journalId = "elm-test"
-      , content = ""
-      , message = ""
-      , status = Success
-      , journalEntries = []
+    ( { currentJournalId = "elm-test"
+      , currentContent = ""
+      , status = None
       }
     , Cmd.none
     )
@@ -71,33 +69,56 @@ init _ =
 
 
 type Msg
-    = Content String
-    | JournalId String
-    | SubmitEntry
-    | SentRequest (Result Http.Error String)
-    | GetJournalEntries
-    | GotJournalEntries (Result Http.Error String)
-    | UpdateMessage String
+    = NewContent String
+    | NewJournalId String
+    | SubmittedEntry
+    | PostedEntry (Result Http.Error ())
+    | GotTime Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Content newContent ->
-            ( { model | content = newContent }, Cmd.none )
+        NewContent newContent ->
+            ( { model | currentContent = newContent }, Cmd.none )
 
-        JournalId newJournalId ->
+        NewJournalId newJournalId ->
             ( { model
-                | journalId = newJournalId
+                | currentJournalId = newJournalId
               }
             , Cmd.none
             )
 
-        UpdateMessage newMessage ->
-            ( { model | message = newMessage }, Cmd.none )
+        SubmittedEntry ->
+            ( { model | status = Loading }, Task.perform GotTime Time.now )
 
-        _ ->
-            ( model, Cmd.none )
+        GotTime time ->
+            let
+                timestamp : Int
+                timestamp =
+                    posixToMillis time
+
+                body : Encode.Value
+                body =
+                    Encode.object
+                        [ ( "journalId", Encode.string model.currentJournalId )
+                        , ( "timestamp", Encode.int timestamp )
+                        , ( "content", Encode.string model.currentContent )
+                        ]
+            in
+            ( model
+            , Http.post
+                { url = baseUrl ++ "/entries"
+                , body = Http.jsonBody body
+                , expect = Http.expectWhatever PostedEntry
+                }
+            )
+
+        PostedEntry (Ok response) ->
+            ( { model | status = Success, currentContent = "" }, Cmd.none )
+
+        PostedEntry (Err error) ->
+            ( { model | status = Failure }, Cmd.none )
 
 
 
@@ -115,57 +136,51 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ div [ class "inputs" ]
-            [ div []
+    div
+        []
+        [ div
+            [ class "inputs" ]
+            [ div
+                []
                 [ input
                     [ placeholder "Journal ID"
-                    , value model.journalId
-                    , onInput JournalId
+                    , value model.currentJournalId
+                    , onInput NewJournalId
                     ]
                     []
                 ]
-            , div []
+            , div
+                []
                 [ textarea
                     [ placeholder "Journal entry goes here."
-                    , value model.content
-                    , onInput Content
+                    , value model.currentContent
+                    , onInput NewContent
                     ]
                     []
                 ]
             , button
                 [ class "submit"
-                , onClick SubmitEntry
+                , onClick SubmittedEntry
                 ]
                 [ text "Submit Entry" ]
             ]
-        , p [ class "message" ] [ text model.message ]
+        , div
+            [ class "status" ]
+            [ viewStatus model.status ]
         ]
 
 
+viewStatus : Status -> Html Msg
+viewStatus status =
+    case status of
+        Failure ->
+            p [] [ text "Something went wrong!" ]
 
--- HELPERS
+        Loading ->
+            p [] [ text "Loading..." ]
 
+        Success ->
+            p [] [ text "Success!" ]
 
-timestamp : Time.Posix -> String
-timestamp posix =
-    String.fromInt (Time.posixToMillis posix)
-
-
-getJournalEntries : String -> Cmd Msg
-getJournalEntries journalId =
-    Http.get
-        { url = baseUrl ++ "/entries?journal=" ++ journalId
-        , expect = Http.expectJson GotJournalEntries journalEntryListDecoder
-        }
-
-
-journalEntryDecoder : Decoder JournalEntry
-journalEntryDecoder =
-    map3 JournalEntry
-        (at [ "journalId" ] string)
-        (at [ "timestamp" ] string)
-        (at [ "content" ] string)
-
-
-journalEntryListDecoder : Decoder
+        None ->
+            p [] [ text "Nothing to report." ]
