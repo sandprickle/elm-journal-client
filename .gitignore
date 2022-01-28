@@ -2,3 +2,5 @@ elm-stuff
 node_modules
 .env
 dist
+elm.js
+elm.min.js
