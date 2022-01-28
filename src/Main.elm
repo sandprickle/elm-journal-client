@@ -98,26 +98,36 @@ update msg model =
                 timestamp =
                     posixToMillis time
 
-                body : Encode.Value
+                url : String
+                url =
+                    baseUrl ++ "/entries"
+
+                body : Http.Body
                 body =
-                    Encode.object
-                        [ ( "journalId", Encode.string model.currentJournalId )
-                        , ( "timestamp", Encode.int timestamp )
-                        , ( "content", Encode.string model.currentContent )
-                        ]
+                    Http.jsonBody
+                        (Encode.object
+                            [ ( "journalId", Encode.string model.currentJournalId )
+                            , ( "timestamp", Encode.int timestamp )
+                            , ( "content", Encode.string model.currentContent )
+                            ]
+                        )
+
+                expect : Http.Expect Msg
+                expect =
+                    Http.expectWhatever PostedEntry
             in
             ( model
             , Http.post
-                { url = baseUrl ++ "/entries"
-                , body = Http.jsonBody body
-                , expect = Http.expectWhatever PostedEntry
+                { url = url
+                , body = body
+                , expect = expect
                 }
             )
 
-        PostedEntry (Ok response) ->
+        PostedEntry (Ok _) ->
             ( { model | status = Success, currentContent = "" }, Cmd.none )
 
-        PostedEntry (Err error) ->
+        PostedEntry (Err _) ->
             ( { model | status = Failure }, Cmd.none )
 
 
@@ -137,13 +147,14 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     div
-        []
+        [ class "app" ]
         [ div
             [ class "inputs" ]
             [ div
                 []
                 [ input
                     [ placeholder "Journal ID"
+                    , type_ "text"
                     , value model.currentJournalId
                     , onInput NewJournalId
                     ]
@@ -153,6 +164,8 @@ view model =
                 []
                 [ textarea
                     [ placeholder "Journal entry goes here."
+                    , rows 10
+                    , cols 60
                     , value model.currentContent
                     , onInput NewContent
                     ]

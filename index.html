@@ -4,8 +4,54 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Main</title>
-    <link rel="stylesheet" href="main.css" />
-    <script src="elm.min.js"></script>
+    <script src="elm.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {},
+        },
+      }
+    </script>
+    <style type="text/tailwindcss">
+      body {
+        @apply bg-gray-900 text-gray-200;
+      }
+
+      .app {
+        @apply container mx-auto p-8;
+      }
+
+      .inputs > div {
+        @apply mb-8;
+      }
+
+      .inputs button,
+      .inputs input,
+      .inputs textarea {
+        @apply px-4 py-2 rounded;
+      }
+
+      .inputs input[type='text'] {
+        @apply bg-gray-800 text-gray-400;
+      }
+
+      .inputs input[type='text']:active {
+        @apply text-gray-300;
+      }
+
+      .inputs textarea {
+        @apply bg-gray-700;
+      }
+
+      .inputs .submit {
+        @apply rounded-full bg-cyan-900;
+      }
+
+      .status {
+        @apply text-sm text-gray-400 mt-16;
+      }
+    </style>
   </head>
 
   <body>
