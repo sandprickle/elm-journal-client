@@ -12,7 +12,7 @@ import Time exposing (millisToPosix, posixToMillis)
 
 baseUrl : String
 baseUrl =
-    "https://fv5c7jlkul.execute-api.us-east-1.amazonaws.com"
+    "https://btjsz1qlnf.execute-api.us-east-1.amazonaws.com"
 
 
 
