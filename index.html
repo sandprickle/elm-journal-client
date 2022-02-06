@@ -14,21 +14,7 @@
       }
     </script>
     <style type="text/tailwindcss">
-      body {
-        @apply bg-gray-900 text-gray-200;
-      }
-
-      .app {
-        @apply container mx-auto p-8;
-      }
-
-      .inputs > div {
-        @apply mb-8;
-      }
-
-      .inputs button,
-      .inputs input,
-      .inputs textarea {
+      .input {
         @apply px-4 py-2 rounded;
       }
 
@@ -40,21 +26,13 @@
         @apply text-gray-300;
       }
 
-      .inputs textarea {
-        @apply bg-gray-700;
-      }
-
-      .inputs .submit {
-        @apply rounded-full bg-cyan-900;
-      }
-
       .status {
-        @apply text-sm text-gray-400 mt-16;
+        @apply text-sm text-gray-400;
       }
     </style>
   </head>
 
-  <body>
+  <body class="bg-gray-900 text-gray-300 container mx-auto sm:px-8 px-4">
     <pre id="elm"></pre>
     <script>
       Elm.Main.init({
@@ -63,4 +41,3 @@
     </script>
   </body>
 </html>
-

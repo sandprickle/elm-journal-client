@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, h3, input, p, text, textarea)
+import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
@@ -40,17 +40,16 @@ type Status
     | None
 
 
-type alias JournalEntry =
-    { journalId : String
-    , timestamp : Int
-    , content : String
-    }
+type CurrentView
+    = Edit
+    | Read
 
 
 type alias Model =
     { currentJournalId : String
     , currentContent : String
     , status : Status
+    , currentView : CurrentView
     }
 
 
@@ -59,6 +58,7 @@ init _ =
     ( { currentJournalId = "elm-test"
       , currentContent = ""
       , status = None
+      , currentView = Edit
       }
     , Cmd.none
     )
@@ -74,6 +74,8 @@ type Msg
     | SubmittedEntry
     | PostedEntry (Result Http.Error ())
     | GotTime Time.Posix
+    | ClickedEdit
+    | ClickedRead
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -130,6 +132,12 @@ update msg model =
         PostedEntry (Err _) ->
             ( { model | status = Failure }, Cmd.none )
 
+        ClickedEdit ->
+            ( { model | currentView = Edit }, Cmd.none )
+
+        ClickedRead ->
+            ( { model | currentView = Read }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -146,54 +154,122 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
+    case model.currentView of
+        Edit ->
+            div []
+                [ viewHeader model
+                , viewEditor model
+                ]
+
+        Read ->
+            div []
+                [ viewHeader model
+                , viewReader model
+                ]
+
+
+viewHeader : Model -> Html Msg
+viewHeader model =
+    header
+        [ class "my-8 flex justify-between items-center" ]
+        [ viewSwitcher model.currentView
+        , div []
+            [ span
+                [ class "mr-4" ]
+                [ text "Current Journal:" ]
+            , input
+                [ placeholder "Journal ID"
+                , type_ "text"
+                , value model.currentJournalId
+                , onInput NewJournalId
+                , class "input text-gray-400 focus:text-gray-300 bg-gray-800"
+                ]
+                []
+            ]
+        ]
+
+
+viewEditor : Model -> Html Msg
+viewEditor model =
     div
-        [ class "app" ]
+        [ class "editor mt-4 sm:mt-8" ]
         [ div
-            [ class "inputs" ]
-            [ div
-                []
-                [ input
-                    [ placeholder "Journal ID"
-                    , type_ "text"
-                    , value model.currentJournalId
-                    , onInput NewJournalId
-                    ]
-                    []
+            [ class "mb-8" ]
+            [ textarea
+                [ placeholder "Journal entry goes here."
+                , rows 10
+                , cols 60
+                , value model.currentContent
+                , onInput NewContent
+                , class "bg-gray-700 w-full input"
                 ]
-            , div
                 []
-                [ textarea
-                    [ placeholder "Journal entry goes here."
-                    , rows 10
-                    , cols 60
-                    , value model.currentContent
-                    , onInput NewContent
-                    ]
-                    []
-                ]
-            , button
-                [ class "submit"
+            ]
+        , div
+            [ class "flex items-center justify-between" ]
+            [ button
+                [ class "px-4 py-2 bg-cyan-900 rounded-full hover:bg-cyan-700"
                 , onClick SubmittedEntry
                 ]
                 [ text "Submit Entry" ]
+            , viewStatus model.status
             ]
-        , div
-            [ class "status" ]
-            [ viewStatus model.status ]
         ]
+
+
+viewReader : Model -> Html Msg
+viewReader model =
+    p [] [ text "reader" ]
 
 
 viewStatus : Status -> Html Msg
 viewStatus status =
     case status of
         Failure ->
-            p [] [ text "Something went wrong!" ]
+            p [ class "status" ] [ text "Something went wrong!" ]
 
         Loading ->
-            p [] [ text "Loading..." ]
+            p [ class "status" ] [ text "Loading..." ]
 
         Success ->
-            p [] [ text "Success!" ]
+            p [ class "status" ] [ text "Success!" ]
 
         None ->
-            p [] [ text "Nothing to report." ]
+            p [ class "status" ] [ text "Nothing to report." ]
+
+
+viewSwitcher : CurrentView -> Html Msg
+viewSwitcher currentView =
+    let
+        selectedClass =
+            "bg-cyan-700 px-4 py-2"
+
+        deselectedClass =
+            "bg-cyan-900 hover:bg-cyan-600 px-4 py-2"
+    in
+    case currentView of
+        Edit ->
+            div
+                [ class "rounded overflow-hidden" ]
+                [ button
+                    [ class selectedClass ]
+                    [ text "Edit" ]
+                , button
+                    [ class deselectedClass
+                    , onClick ClickedRead
+                    ]
+                    [ text "Read" ]
+                ]
+
+        Read ->
+            div
+                [ class "rounded" ]
+                [ button
+                    [ class deselectedClass
+                    , onClick ClickedEdit
+                    ]
+                    [ text "Edit" ]
+                , button
+                    [ class selectedClass ]
+                    [ text "Read" ]
+                ]

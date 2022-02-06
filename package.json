@@ -1,0 +1,26 @@
+{
+  "name": "elm-client",
+  "version": "0.1.0",
+  "description": "",
+  "main": "elm.js",
+  "scripts": {
+    "test": "elm-test-rs",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "prepare": "elm-tooling install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sandprickle/elm-journal-client.git"
+  },
+  "author": "Bryce Miller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sandprickle/elm-journal-client/issues"
+  },
+  "homepage": "https://github.com/sandprickle/elm-journal-client#readme",
+  "devDependencies": {
+    "elm-tooling": "^1.7.0"
+  }
+}
