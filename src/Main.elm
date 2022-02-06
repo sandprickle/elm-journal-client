@@ -1,29 +1,23 @@
 module Main exposing (..)
 
 import Browser
-import Css exposing (..)
-import Html
-import Html.Styled exposing (..)
-import Html.Styled.Attributes
+import Browser.Navigation as Nav
+import Html exposing (..)
+import Html.Attributes
     exposing
         ( class
         , cols
-        , css
         , placeholder
         , rows
         , type_
         , value
         )
-import Html.Styled.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Encode as Encode
 import Task
 import Time exposing (posixToMillis)
-
-
-baseUrl : String
-baseUrl =
-    "https://btjsz1qlnf.execute-api.us-east-1.amazonaws.com"
+import Url
 
 
 
@@ -32,11 +26,13 @@ baseUrl =
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.application
         { init = init
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , update = update
         , subscriptions = subscriptions
-        , view = view >> toUnstyled
+        , view = view
         }
 
 
@@ -61,15 +57,19 @@ type alias Model =
     , currentContent : String
     , status : Status
     , currentView : CurrentView
+    , key : Nav.Key
+    , url : Url.Url
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     ( { currentJournalId = "elm-test"
       , currentContent = ""
       , status = None
       , currentView = Edit
+      , key = key
+      , url = url
       }
     , Cmd.none
     )
@@ -87,6 +87,8 @@ type Msg
     | GotTime Time.Posix
     | ClickedEdit
     | ClickedRead
+    | UrlChanged Url.Url
+    | LinkClicked Browser.UrlRequest
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -110,6 +112,10 @@ update msg model =
                 timestamp : Int
                 timestamp =
                     posixToMillis time
+
+                baseUrl : String
+                baseUrl =
+                    "https://btjsz1qlnf.execute-api.us-east-1.amazonaws.com"
 
                 url : String
                 url =
@@ -149,6 +155,17 @@ update msg model =
         ClickedRead ->
             ( { model | currentView = Read }, Cmd.none )
 
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | url = url }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -163,22 +180,26 @@ subscriptions _ =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    case model.currentView of
-        Edit ->
-            div
-                []
-                [ viewHeader model
-                , viewEditor model
-                ]
+    { title = "Journal"
+    , body =
+        [ case model.currentView of
+            Edit ->
+                div
+                    []
+                    [ viewHeader model
+                    , viewEditor model
+                    ]
 
-        Read ->
-            div
-                []
-                [ viewHeader model
-                , viewReader model
-                ]
+            Read ->
+                div
+                    []
+                    [ viewHeader model
+                    , viewReader model
+                    ]
+        ]
+    }
 
 
 viewHeader : Model -> Html Msg
