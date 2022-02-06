@@ -1,9 +1,20 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
+import Css exposing (..)
+import Html
+import Html.Styled exposing (..)
+import Html.Styled.Attributes
+    exposing
+        ( class
+        , cols
+        , css
+        , placeholder
+        , rows
+        , type_
+        , value
+        )
+import Html.Styled.Events exposing (onClick, onInput)
 import Http
 import Json.Encode as Encode
 import Task
@@ -25,7 +36,7 @@ main =
         { init = init
         , update = update
         , subscriptions = subscriptions
-        , view = view
+        , view = view >> toUnstyled
         }
 
 
@@ -156,13 +167,15 @@ view : Model -> Html Msg
 view model =
     case model.currentView of
         Edit ->
-            div []
+            div
+                []
                 [ viewHeader model
                 , viewEditor model
                 ]
 
         Read ->
-            div []
+            div
+                []
                 [ viewHeader model
                 , viewReader model
                 ]
@@ -263,7 +276,7 @@ viewSwitcher currentView =
 
         Read ->
             div
-                [ class "rounded" ]
+                [ class "rounded overflow-hidden" ]
                 [ button
                     [ class deselectedClass
                     , onClick ClickedEdit
