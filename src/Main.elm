@@ -5,9 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
-import Json.Encode as Encode exposing (encode, int, string)
+import Json.Encode as Encode
 import Task
-import Time exposing (millisToPosix, posixToMillis)
+import Time exposing (posixToMillis)
 
 
 baseUrl : String
