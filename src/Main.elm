@@ -7,6 +7,7 @@ import Html.Attributes
     exposing
         ( class
         , cols
+        , href
         , placeholder
         , rows
         , type_
@@ -17,7 +18,7 @@ import Http
 import Json.Encode as Encode
 import Task
 import Time exposing (posixToMillis)
-import Url
+import Url exposing (Url)
 
 
 
@@ -29,10 +30,10 @@ main =
     Browser.application
         { init = init
         , onUrlChange = UrlChanged
-        , onUrlRequest = LinkClicked
+        , onUrlRequest = UrlRequested
         , update = update
-        , subscriptions = subscriptions
-        , view = view
+        , subscriptions = \_ -> Sub.none
+        , view = \model -> { title = "Journal", body = [ view model ] }
         }
 
 
@@ -52,24 +53,36 @@ type CurrentView
     | Read
 
 
+type Token
+    = Token String
+
+
 type alias Model =
     { currentJournalId : String
     , currentContent : String
+    , username : String
+    , password : String
     , status : Status
     , currentView : CurrentView
+    , idToken : Maybe Token
+    , accessToken : Maybe Token
+    , url : Url
     , key : Nav.Key
-    , url : Url.Url
     }
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
     ( { currentJournalId = "elm-test"
       , currentContent = ""
+      , username = ""
+      , password = ""
       , status = None
       , currentView = Edit
-      , key = key
+      , idToken = Just (Token "faketoken")
+      , accessToken = Nothing
       , url = url
+      , key = key
       }
     , Cmd.none
     )
@@ -82,13 +95,17 @@ init flags url key =
 type Msg
     = NewContent String
     | NewJournalId String
+    | NewUsername String
+    | NewPassword String
     | SubmittedEntry
     | PostedEntry (Result Http.Error ())
     | GotTime Time.Posix
     | ClickedEdit
     | ClickedRead
-    | UrlChanged Url.Url
-    | LinkClicked Browser.UrlRequest
+    | ClickedLogout
+    | ClickedLogin
+    | UrlChanged Url
+    | UrlRequested Browser.UrlRequest
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -103,6 +120,12 @@ update msg model =
               }
             , Cmd.none
             )
+
+        NewUsername newUsername ->
+            ( { model | username = newUsername }, Cmd.none )
+
+        NewPassword newPassword ->
+            ( { model | password = newPassword }, Cmd.none )
 
         SubmittedEntry ->
             ( { model | status = Loading }, Task.perform GotTime Time.now )
@@ -155,7 +178,27 @@ update msg model =
         ClickedRead ->
             ( { model | currentView = Read }, Cmd.none )
 
-        LinkClicked urlRequest ->
+        ClickedLogout ->
+            ( { model
+                | idToken = Nothing
+                , accessToken = Nothing
+              }
+            , Cmd.none
+            )
+
+        ClickedLogin ->
+            ( { model
+                | username = ""
+                , password = ""
+                , idToken = Just (Token "SomeFakeToken")
+              }
+            , Cmd.none
+            )
+
+        UrlChanged url ->
+            ( { model | url = url }, Cmd.none )
+
+        UrlRequested urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model, Nav.pushUrl model.key (Url.toString url) )
@@ -163,50 +206,85 @@ update msg model =
                 Browser.External href ->
                     ( model, Nav.load href )
 
-        UrlChanged url ->
-            ( { model | url = url }, Cmd.none )
-
-
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
-
 
 
 -- VIEW
 
 
-view : Model -> Browser.Document Msg
+view : Model -> Html Msg
 view model =
-    { title = "Journal"
-    , body =
-        [ case model.currentView of
-            Edit ->
-                div
-                    []
-                    [ viewHeader model
-                    , viewEditor model
-                    ]
+    case model.idToken of
+        Nothing ->
+            div
+                [ class "w-full h-screen flex items-center justify-center" ]
+                [ viewLogin model ]
 
-            Read ->
-                div
-                    []
-                    [ viewHeader model
-                    , viewReader model
-                    ]
+        Just _ ->
+            viewApp model
+
+
+viewLogin : Model -> Html Msg
+viewLogin model =
+    div
+        [ class "p-8 rounded bg-gray-800" ]
+        [ div
+            [ class "" ]
+            [ input
+                [ type_ "text"
+                , placeholder "username"
+                , class "input mb-8 block bg-gray-700 text-center"
+                , onInput NewUsername
+                , value model.username
+                ]
+                []
+            , input
+                [ type_ "password"
+                , placeholder "password"
+                , class "input mb-8 block bg-gray-700 text-center"
+                , onInput NewPassword
+                , value model.password
+                ]
+                []
+            , button
+                [ class "input bg-cyan-900 w-full block hover:bg-cyan-800"
+                , onClick ClickedLogin
+                ]
+                [ text "Login" ]
+            ]
         ]
-    }
+
+
+viewApp : Model -> Html Msg
+viewApp model =
+    case model.currentView of
+        Edit ->
+            div
+                []
+                [ viewHeader model
+                , viewEditor model
+                ]
+
+        Read ->
+            div
+                []
+                [ viewHeader model
+                , viewReader model
+                ]
 
 
 viewHeader : Model -> Html Msg
 viewHeader model =
     header
         [ class "my-8 flex justify-between items-center" ]
-        [ viewSwitcher model.currentView
+        [ div
+            [ class "flex items-center" ]
+            [ viewSwitcher model.currentView
+            , button
+                [ class "ml-8 underline text-sm"
+                , onClick ClickedLogout
+                ]
+                [ text "Log Out" ]
+            ]
         , div []
             [ span
                 [ class "mr-4" ]
@@ -284,7 +362,7 @@ viewSwitcher currentView =
     case currentView of
         Edit ->
             div
-                [ class "rounded overflow-hidden" ]
+                [ class "rounded overflow-hidden inline-block" ]
                 [ button
                     [ class selectedClass ]
                     [ text "Edit" ]
@@ -297,7 +375,7 @@ viewSwitcher currentView =
 
         Read ->
             div
-                [ class "rounded overflow-hidden" ]
+                [ class "rounded overflow-hidden inline-block" ]
                 [ button
                     [ class deselectedClass
                     , onClick ClickedEdit
