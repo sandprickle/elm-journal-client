@@ -71,6 +71,7 @@ type alias Model =
     , password : String
     , status : Status
     , currentView : CurrentView
+    , route : Route
     , idToken : Maybe Token
     , accessToken : Maybe Token
     , url : Url
@@ -86,6 +87,7 @@ init flags url key =
       , password = ""
       , status = None
       , currentView = Edit
+      , route = Login
       , idToken = Just (Token "faketoken")
       , accessToken = Nothing
       , url = url
