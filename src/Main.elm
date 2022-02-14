@@ -53,6 +53,13 @@ type CurrentView
     | Read
 
 
+type Route
+    = Write
+    | Browse
+    | Login
+    | Auth Token
+
+
 type Token
     = Token String
 
